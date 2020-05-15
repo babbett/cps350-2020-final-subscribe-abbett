@@ -1,14 +1,20 @@
 package com.example.subscriptionmanager;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -16,9 +22,9 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -64,19 +70,30 @@ public class MainActivity extends AppCompatActivity {
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
             // Launch sign-in activity
-            Intent intent = new Intent(this, Authenticate.class);
-            startActivity(intent);
-        }
-        Log.d(TAG, account.getDisplayName() );
+            launchAuthenticate();
+        } else {
+            setGoogleSignInClient();
 
-        // Get the list of subscriptions
-        // If loading from memory is implemented, should add some sort of check to make sure that
-        // progressbar is made visible while loading and invisible when done. Currently only becomes
-        // invisible after API call is finished.
-        progressBar.setVisibility(View.VISIBLE);
-        loadingText.setVisibility(View.VISIBLE);
-        new getSubscriptionAsync().execute(this);
+            // Get the list of subscriptions
+            // If loading from memory is implemented, should add some sort of check to make sure that
+            // progressbar is made visible while loading and invisible when done. Currently only becomes
+            // invisible after API call is finished.
+            progressBar.setVisibility(View.VISIBLE);
+            loadingText.setVisibility(View.VISIBLE);
+            new getSubscriptionAsync().execute(this);
+        }
+
     }
+    //Will probably need to implement these to fix some login errors
+//    @Override
+//    protected void onStart(Bundle savedInstanceState) {
+//
+//    }
+//
+//    @Override
+//    protected void onResume(Bundle savedInstanceState) {
+//
+//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -93,7 +110,9 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_logout) {
+            Log.d(TAG, "onOptionsItemSelected: clicked???");
+            openLogoutDialogue();
             return true;
         }
 
@@ -146,7 +165,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         protected void onPostExecute(SubscriptionListResponse result) {
+            // The result is currently only the first page
             Log.d("ASYNC", "onPostExecute: " + result);
+            Log.d("ASYNC", result.getItems().get(result.getItems().size()-1).toString());
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
         }
@@ -206,6 +227,60 @@ public class MainActivity extends AppCompatActivity {
 
 //        protected JSONArray generateSubscriberJSON(String name, String)
     }
+
+    private void openLogoutDialogue() {
+        // The following code was copied almost entirely from this useful link:
+        // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Confirm logout");
+        builder.setMessage("You are about to logout from the app. Do you really want to proceed? The app's permissions to view your Google account will be revoked.");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Toast.makeText(getApplicationContext(), "You have logged out of the app.", Toast.LENGTH_SHORT).show();
+                revokePermission();
+            }
+        });
+
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Toast.makeText(getApplicationContext(), "You will not be logged out.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.show();
+    }
+
+    private void revokePermission() {
+        // need to get the sign in client
+        mGoogleSignInClient.revokeAccess();
+        mGoogleSignInClient.signOut();
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+        Log.d(TAG, (account == null)?"worked":"didnt work??");
+        launchAuthenticate();
+    }
+
+    private void setGoogleSignInClient() {
+        // Configure sign-in to request the user's ID, email address, and basic
+        // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestScopes(new Scope("https://www.googleapis.com/auth/youtube.readonly"))
+                .requestIdToken(getString(R.string.client_id)) // added this from stackoverflow answer
+                .requestEmail()
+                .build();
+
+        // Build a GoogleSignInClient with the options specified by gso.
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+    }
+
+    private void launchAuthenticate() {
+        Intent intent = new Intent(this, Authenticate.class);
+        startActivity(intent);
+    }
+
+    GoogleSignInClient mGoogleSignInClient;
     ProgressBar progressBar;
     TextView loadingText;
 }

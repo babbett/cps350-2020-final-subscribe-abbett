@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Subscription Manager</string>
-    <string name="action_settings">Settings</string>
+    <string name="action_logout">Logout</string>
     <string name="login_text">In order to view and manage your subscriptions, we need access to your Google account.</string>
     <string name="client_id">27841034708-1u4mco5j9dlqth03nls4ghe8dsphkgo5.apps.googleusercontent.com</string>
     <string name="loading_text">Loading subscription data from YouTube...</string>
