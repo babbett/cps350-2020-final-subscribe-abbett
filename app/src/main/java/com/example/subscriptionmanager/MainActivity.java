@@ -18,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -57,7 +58,8 @@ public class MainActivity extends AppCompatActivity {
         // Progress bar and loading text will display while
         progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
-
+        loadingText = findViewById(R.id.loading_text);
+        loadingText.setVisibility(View.INVISIBLE);
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
@@ -72,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
         // progressbar is made visible while loading and invisible when done. Currently only becomes
         // invisible after API call is finished.
         progressBar.setVisibility(View.VISIBLE);
+        loadingText.setVisibility(View.VISIBLE);
         new getSubscriptionAsync().execute(this);
     }
 
@@ -145,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(SubscriptionListResponse result) {
             Log.d("ASYNC", "onPostExecute: " + result);
             progressBar.setVisibility(View.INVISIBLE);
+            loadingText.setVisibility(View.INVISIBLE);
         }
 
         protected String getNextPageToken (SubscriptionListResponse response) {
@@ -203,4 +207,5 @@ public class MainActivity extends AppCompatActivity {
 //        protected JSONArray generateSubscriberJSON(String name, String)
     }
     ProgressBar progressBar;
+    TextView loadingText;
 }
