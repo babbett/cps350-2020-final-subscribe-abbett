@@ -2,10 +2,11 @@ package com.example.subscriptionmanager;
 
 import android.util.Log;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CategoryList {
+public class CategoryList implements Serializable {
     private static ArrayList<Category> myCategories;
 
     public CategoryList() {

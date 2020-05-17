@@ -147,9 +147,17 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_logout) {
-            Log.d(TAG, "onOptionsItemSelected: clicked???");
             openLogoutDialogue();
             return true;
+        }
+
+        if (id == R.id.action_rename) {
+            openRenameDialogue();
+            return true;
+        }
+
+        if (id == R.id.action_delete) {
+            openDeleteDialogue()
         }
 
         return super.onOptionsItemSelected(item);
@@ -296,6 +304,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         builder.show();
+    }
+
+    private void openRenameDialogue() {
+
+    }
+
+    private void openDeleteDialogue() {
+
     }
 
     private void revokePermission() {
