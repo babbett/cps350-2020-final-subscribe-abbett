@@ -4,4 +4,7 @@
     <string name="login_text">In order to view and manage your subscriptions, we need access to your Google account.</string>
     <string name="client_id">27841034708-1u4mco5j9dlqth03nls4ghe8dsphkgo5.apps.googleusercontent.com</string>
     <string name="loading_text">Loading subscription data from YouTube...</string>
+    <string name="title_activity_main_tabs">MainTabs</string>
+    <string name="tab_text_1">Tab 1</string>
+    <string name="tab_text_2">Tab 2</string>
 </resources>

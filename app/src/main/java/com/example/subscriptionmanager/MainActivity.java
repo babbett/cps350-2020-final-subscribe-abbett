@@ -3,6 +3,8 @@ package com.example.subscriptionmanager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -22,6 +24,13 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
+import android.widget.Adapter;
+import android.widget.BaseAdapter;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,6 +39,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -40,15 +51,18 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Subscription;
 import com.google.api.services.youtube.model.SubscriptionListResponse;
+import com.squareup.picasso.Picasso;
 
 public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity"; // For debugging
     AsyncTask<Context, Void, SubscriptionListResponse> getSubscriptionsAsync;
+    final int REQUEST_CODE = 9002; // The request code used for creating new categories
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+//        setContentView(R.layout.fragment_collections);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -56,16 +70,21 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                beginAddCategory();
                 Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
         });
 
-        // Progress bar and loading text will display while
+        // Progress bar and loading text will display while loading subscription data
         progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
         loadingText = findViewById(R.id.loading_text);
         loadingText.setVisibility(View.INVISIBLE);
+
+        // Category list will be invisible while loading subscription data
+        categoryListView = findViewById(R.id.category_list_view);
+        categoryListView.setVisibility(View.INVISIBLE);
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
@@ -80,10 +99,27 @@ public class MainActivity extends AppCompatActivity {
             // invisible after API call is finished.
             progressBar.setVisibility(View.VISIBLE);
             loadingText.setVisibility(View.VISIBLE);
+            mySubscriptions = new SubscriptionList();
             new getSubscriptionAsync().execute(this);
         }
+    }
+
+    @Override
+    protected void onPause(){
+        super.onPause();
+        Log.d(TAG, "onPause");
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+        Log.d(TAG, "onResume");
 
     }
+
+
+
+
     //Will probably need to implement these to fix some login errors
 //    @Override
 //    protected void onStart(Bundle savedInstanceState) {
@@ -153,12 +189,17 @@ public class MainActivity extends AppCompatActivity {
             }
 
             nextPageToken = getNextPageToken(response);
-            getListOfSubscribers(response);
+//            getListOfSubscribers(response);
+            Log.d(TAG, Integer.toString(response.getItems().size()));
+            mySubscriptions.addSubscriptionList(response); // adding to the list of subscription objects
             Log.d("MainActivity", "nextPageToken: " + nextPageToken);
             while (nextPageToken != "ERROR") {
                 SubscriptionListResponse nextResponse;
                 nextResponse = getNextSubscriptionPage(youTube, nextPageToken);
-                getListOfSubscribers(nextResponse);
+//                getListOfSubscribers(nextResponse);
+                Log.d(TAG, Integer.toString(nextResponse.getItems().size()));
+
+                mySubscriptions.addSubscriptionList(nextResponse); // adding to the list of subscription objects
                 nextPageToken = getNextPageToken(nextResponse);
             }
             return response;
@@ -166,10 +207,15 @@ public class MainActivity extends AppCompatActivity {
 
         protected void onPostExecute(SubscriptionListResponse result) {
             // The result is currently only the first page
-            Log.d("ASYNC", "onPostExecute: " + result);
-            Log.d("ASYNC", result.getItems().get(result.getItems().size()-1).toString());
+
+//            mySubscriptions.getMySubscriptions();
+            for (com.example.subscriptionmanager.Subscription sub: mySubscriptions.getMySubscriptions()) {
+                Log.d(TAG, "onPostExecute: "+ sub.getTitle());
+            }
+            myCategories = new CategoryList();
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
+            displayCategories();
         }
 
         protected String getNextPageToken (SubscriptionListResponse response) {
@@ -211,7 +257,6 @@ public class MainActivity extends AppCompatActivity {
             int index = 0;
             for (Subscription item : items) {
                 subscriberList.add(item.getSnippet().getTitle());
-//
 //                try {
 //                    thumbnailUrl = item.getSnippet().getThumbnails().getDefault().getUrl();
 ////                    Log.d("THUMBNAIL", item.getSnippet().getThumbnails().getDefault().getUrl());
@@ -280,7 +325,128 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    private void beginAddCategory() {
+        // The following code was copied almost entirely from this useful link:
+        // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+        final EditText edtText = new EditText(this);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Create new category");
+        builder.setMessage("Enter category name:");
+        builder.setCancelable(false);
+        builder.setView(edtText);
+        builder.setNeutralButton("Create", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                launchNewCategory(edtText.getText().toString());
+            }
+        });
+        builder.show();
+    }
+
+    private void launchNewCategory(String title) {
+        Intent intent = new Intent(this, NewCategory.class);
+        intent.putExtra("title", title);
+        startActivityForResult(intent, REQUEST_CODE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_CODE)
+        {
+            Log.d(TAG, "result " + Integer.toString(resultCode));
+            if (resultCode == RESULT_OK) {
+                if (data == null) {
+                    Log.d(TAG, "onActivityResult: DATA WAS NULL?");
+                    return;
+                }
+                Bundle bundle = data.getExtras();
+    
+                String categoryName = (String) bundle.getString("title");
+
+//                List<com.example.subscriptionmanager.Subscription> newSubscriptionList =
+//                        (List<com.example.subscriptionmanager.Subscription>) bundle.get("list");
+                String title2 = myCategories.getMyCategories().get(1).getTitle();
+                for(Category category: myCategories.getMyCategories()) {
+                    Log.d("PLEASEWORK",category.getTitle());
+                }
+
+//                Category newCategory = new Category(categoryName, false);
+//                newCategory.addList(newSubscriptionList);
+//                myCategories.addCategory(newCategory);
+
+                Log.d(TAG, "selection confirmed");
+            }
+            if (resultCode == RESULT_CANCELED) {
+                Log.d(TAG, "onActivityResult: BAD THING");
+            }
+
+
+        }
+    }
+
+    private void displayCategories() {
+        adapter = new CategoryListAdapter();
+        categoryListView.setAdapter(adapter);
+        categoryListView.setVisibility(View.VISIBLE);
+//        listView.setOnItemClickListener(messageClickedHandler);
+    }
+
+    private class CategoryListAdapter extends BaseAdapter {
+        // override other abstract methods here
+
+        @Override
+        public int getCount() {
+            return myCategories.getMyCategories().size();
+        }
+
+        @Override
+        public com.example.subscriptionmanager.Category getItem(int position) {
+            return myCategories.getMyCategories().get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return 0L;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup container) {
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(R.layout.default_list_item, container, false);
+            }
+
+            ImageView imgView = convertView.findViewById(R.id.category_folder_image);
+            TextView textView = convertView.findViewById(R.id.category_text);
+            TextView numberView = convertView.findViewById(R.id.category_number_text);
+
+            Category currentCategory = myCategories.getMyCategories().get(position);
+            textView.setText(currentCategory.getTitle());
+            numberView.setText(Integer.toString(currentCategory.getSubscriptions().size()));
+            Log.d("ListView", Integer.toString(myCategories.getMyCategories().size()));
+
+            if (position == 0) {
+                imgView.setImageResource(R.drawable.special_folder);
+            } else {
+                imgView.setImageResource(R.drawable.folder_image);
+            }
+
+            return convertView;
+        }
+
+    }
+
+
+
+
     GoogleSignInClient mGoogleSignInClient;
+    SubscriptionList mySubscriptions;
+    CategoryList myCategories;
+
     ProgressBar progressBar;
     TextView loadingText;
+    ListView categoryListView;
+    ListAdapter adapter;
 }
