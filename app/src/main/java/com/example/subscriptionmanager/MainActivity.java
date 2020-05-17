@@ -27,7 +27,9 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.Adapter;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -157,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (id == R.id.action_delete) {
-            openDeleteDialogue()
+            deleteButtonPressed();
         }
 
         return super.onOptionsItemSelected(item);
@@ -310,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void openDeleteDialogue() {
+    private void deleteButtonPressed() {
 
     }
 
@@ -437,8 +439,10 @@ public class MainActivity extends AppCompatActivity {
             ImageView imgView = convertView.findViewById(R.id.category_folder_image);
             TextView textView = convertView.findViewById(R.id.category_text);
             TextView numberView = convertView.findViewById(R.id.category_number_text);
+            final ImageButton deleteButton = convertView.findViewById(R.id.category_delete_button);
+            final ImageButton renameButton = convertView.findViewById(R.id.category_rename_button);
 
-            Category currentCategory = myCategories.getMyCategories().get(position);
+            final Category currentCategory = myCategories.getMyCategories().get(position);
             textView.setText(currentCategory.getTitle());
             numberView.setText(Integer.toString(currentCategory.getSubscriptions().size()));
             Log.d("ListView", Integer.toString(myCategories.getMyCategories().size()));
@@ -448,6 +452,94 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 imgView.setImageResource(R.drawable.folder_image);
             }
+
+            renameButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openRenameDialogue(v);
+                }
+
+                private void openRenameDialogue(View v){
+                    // The following code was copied almost entirely from this useful link:
+                    // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+                    final EditText edtText = new EditText(v.getContext());
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                    builder.setTitle("Rename " + currentCategory.getTitle());
+                    builder.setMessage("Enter new name:");
+                    builder.setCancelable(true);
+                    builder.setView(edtText);
+                    builder.setNeutralButton("Change", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            currentCategory.setTitle(edtText.getText().toString());
+//                            onResume();
+                        }
+                    });
+                    builder.show();
+                }
+            });
+
+            deleteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openDeleteDialogue(v);
+                }
+
+                private void openDeleteDialogue(View v) {
+                    // The following code was copied almost entirely from this useful link:
+                    // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+                    AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                    builder.setTitle("Delete " + currentCategory.getTitle());
+                    builder.setMessage("Are you sure you want to delete this category? This cannot be undone.");
+                    builder.setCancelable(true);
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Toast.makeText(getApplicationContext(), "Deleted " + currentCategory.getTitle(), Toast.LENGTH_SHORT).show();
+                            myCategories.removeCategory(currentCategory);
+                            notifyDataSetChanged();
+//                            onResume();
+                        }
+                    });
+
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Toast.makeText(getApplicationContext(), "Cancelled", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    builder.show();
+                }
+            });
+
+            convertView.setOnLongClickListener(new View.OnLongClickListener() {
+                boolean isLongClicked = false;
+
+                @Override
+                public boolean onLongClick(View v) {
+                    isLongClicked = !isLongClicked;
+                    Log.d(TAG, "onLongClick: longclicked " + currentCategory.getTitle());
+                    editMode(isLongClicked);
+                    return true;
+                }
+
+                private void editMode(boolean isLongClicked) {
+                    // Cant rename main category
+                    if (currentCategory.getTitle().equals("All")) {return;}
+
+                    if (isLongClicked) {
+                        deleteButton.setVisibility(View.VISIBLE);
+                        renameButton.setVisibility(View.VISIBLE);
+                    } else {
+                        deleteButton.setVisibility(View.GONE);
+                        renameButton.setVisibility(View.GONE);
+                    }
+                }
+
+
+            });
 
             return convertView;
         }
