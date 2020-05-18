@@ -5,12 +5,13 @@ import android.widget.ProgressBar;
 
 import com.google.api.services.youtube.model.SubscriptionListResponse;
 
+import java.io.Serializable;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class SubscriptionList {
+public class SubscriptionList implements Serializable {
     final String TAG = "SubscriptionList";
 
     private static ArrayList<Subscription> mySubscriptions = new ArrayList<Subscription>();
@@ -23,11 +24,9 @@ public class SubscriptionList {
 
         for (com.google.api.services.youtube.model.Subscription sub: subList) {
             String title = sub.getSnippet().getTitle();
-            Log.d(TAG, "addSubscriptionList: " + sub.getSnippet());
             String url = sub.getSnippet().getThumbnails().getDefault().getUrl();
             Subscription newSub = new Subscription(title, url);
             addSubscription(newSub);
-            Log.d(TAG, "addSubscriptionList: added " + title);
         }
     }
 
@@ -39,11 +38,9 @@ public class SubscriptionList {
     private boolean isAlreadyInSubscriptionList(Subscription sub) {
         for (Subscription subscription: mySubscriptions) {
             if (subscription.getImageUrl().equals(sub.getImageUrl())) {
-                Log.d("SubscriptionList", sub.getTitle() + " already in the mySubscriptions list");
                 return true;
             }
         }
-        Log.d("SubscriptionList", sub.getTitle() + " not in the mySubscriptions list");
         return false;
     }
 

@@ -19,6 +19,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -38,6 +39,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +51,7 @@ import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Subscription;
 import com.google.api.services.youtube.model.SubscriptionListResponse;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity"; // For debugging
@@ -68,8 +71,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 beginAddCategory();
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
             }
         });
 
@@ -106,22 +107,59 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void reloadCategories() {
-        // Attempts to reload categorylist data from memory
+        // Attempts to reload data from memory
         Gson gson = new Gson();
-        String json = mPrefs.getString("myCategories", "");
+
+        // Load categoriesList object
+        String json = mPrefs.getString("myCategoriesObject", "");
+//        CategoryList loadedCategoryList = gson.fromJson(json, CategoryList.class);
         myCategories = gson.fromJson(json, CategoryList.class);
 
+        json = mPrefs.getString("myCategoriesList", "");
+
+        Type type = new TypeToken<List<Category>>(){}.getType();
+        List<Category> loadedListOfCategories = gson.fromJson(json, type);
+
+        if (loadedListOfCategories == null) {
+            Log.d(TAG, "reloadList: NULL");
+        } else {
+            loaded = true;
+            Log.d(TAG, "reloadList: " + loadedListOfCategories.get(0).getSubscriptions().size());
+        }
+
+        if (myCategories == null) {
+            Log.d(TAG, "reloadCategories: NULL");
+        } else {
+            loaded = true;
+            Log.d(TAG, "reloadCategories: " + myCategories.getMyCategories().get(0).getSubscriptions().size());
+        }
         Log.d("LOAD",json);
+        myCategories.addCategoryListFromLoad(loadedListOfCategories);
+//        for (Category category: loadedListOfCategories) {
+//            myCategories.addCategoryFromLoad(category);
+//            Log.d("LOAD", "added " + category.getTitle());
+//        }
     }
 
     private void saveCategories() {
-        // Save the categorylist data
+        // Save the data to memory
         Log.d("SAVE", "save called");
         SharedPreferences.Editor prefsEditor = mPrefs.edit();
         Gson gson = new Gson();
+
+        // Save CategoriesList object
         String json = gson.toJson(myCategories);
-        prefsEditor.putString("myCategories", json);
-        Log.d("SAVE",json);
+        prefsEditor.putString("myCategoriesObject", json);
+
+        // Save List<Categories> object
+        json = gson.toJson(myCategories.getMyCategories());
+        prefsEditor.putString("myCategoriesList", json);
+
+        // Save main subscription list (test)
+        json = gson.toJson(myCategories.getMainSubscriptions());
+        prefsEditor.putString("uncategorizedSubscriptionList", json);
+
+        Log.d("SAVE", gson.toString());
         prefsEditor.commit();
     }
 
@@ -207,16 +245,18 @@ public class MainActivity extends AppCompatActivity {
 //            getListOfSubscribers(response);
             Log.d(TAG, Integer.toString(response.getItems().size()));
             mySubscriptions.addSubscriptionList(response); // adding to the list of subscription objects
-            Log.d("MainActivity", "nextPageToken: " + nextPageToken);
             while (nextPageToken != "ERROR") {
                 SubscriptionListResponse nextResponse;
                 nextResponse = getNextSubscriptionPage(youTube, nextPageToken);
 //                getListOfSubscribers(nextResponse);
                 Log.d(TAG, Integer.toString(nextResponse.getItems().size()));
-
                 mySubscriptions.addSubscriptionList(nextResponse); // adding to the list of subscription objects
                 nextPageToken = getNextPageToken(nextResponse);
             }
+
+            myCategories.updateCategories(mySubscriptions.getMySubscriptions());
+
+//            myCategories.addListToMainFromApi(mySubscriptions.getMySubscriptions());
             return response;
         }
 
@@ -224,11 +264,7 @@ public class MainActivity extends AppCompatActivity {
             // The result is currently only the first page
 
 //            mySubscriptions.getMySubscriptions();
-            for (com.example.subscriptionmanager.Subscription sub: mySubscriptions.getMySubscriptions()) {
-                Log.d(TAG, "onPostExecute: "+ sub.getTitle());
-            }
 //            myCategories = new CategoryList();
-            myCategories = new CategoryList();
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
             displayCategories();
@@ -320,6 +356,8 @@ public class MainActivity extends AppCompatActivity {
         mGoogleSignInClient.signOut();
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         Log.d(TAG, (account == null)?"worked":"didnt work??");
+
+        PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit().clear().apply();
         launchAuthenticate();
     }
 
@@ -349,7 +387,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Create new category");
         builder.setMessage("Enter category name:");
-        builder.setCancelable(false);
+        builder.setCancelable(true);
         builder.setView(edtText);
         builder.setNeutralButton("Create", new DialogInterface.OnClickListener() {
             @Override
@@ -401,6 +439,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void displayCategories() {
+        if (!loaded) {
+            myCategories = new CategoryList();
+        }
         adapter = new CategoryListAdapter();
         categoryListView.setAdapter(adapter);
         categoryListView.setVisibility(View.VISIBLE);
@@ -492,6 +533,8 @@ public class MainActivity extends AppCompatActivity {
                         public void onClick(DialogInterface dialog, int which) {
                             Toast.makeText(getApplicationContext(), "Deleted " + currentCategory.getTitle(), Toast.LENGTH_SHORT).show();
                             myCategories.removeCategory(currentCategory);
+                            deleteButton.setVisibility(View.GONE);
+                            renameButton.setVisibility(View.GONE);
                             notifyDataSetChanged();
                         }
                     });
@@ -520,7 +563,7 @@ public class MainActivity extends AppCompatActivity {
 
                 private void editMode(boolean isLongClicked) {
                     // Cant rename main category
-                    if (currentCategory.getTitle().equals("Uncategorized")) {return;}
+                    if (myCategories.getMyCategories().indexOf(currentCategory) == 0) {return;}
 
                     if (isLongClicked) {
                         deleteButton.setVisibility(View.VISIBLE);
@@ -551,7 +594,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
+    Boolean loaded;
     SharedPreferences mPrefs;
     GoogleSignInClient mGoogleSignInClient;
     SubscriptionList mySubscriptions;

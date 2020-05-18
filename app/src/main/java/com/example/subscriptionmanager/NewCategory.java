@@ -132,12 +132,12 @@ public class NewCategory extends AppCompatActivity {
                 }
             });
 
-            checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-//                    isSubscriptionChecked.set(the_position, isChecked);
-                }
-            });
+//            checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+//                @Override
+//                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+////                    isSubscriptionChecked.set(the_position, isChecked);
+//                }
+//            });
 
 
             return convertView;
@@ -162,14 +162,9 @@ public class NewCategory extends AppCompatActivity {
         List<Subscription> categorySubscriptions = new ArrayList<>();
 
         for (Subscription subscription: mySubscriptions) {
-            Log.d("HELPMEPLS", isSubscriptionChecked.get(mySubscriptions.indexOf(subscription))?"true " + subscription.getTitle():"false" + subscription.getTitle());
             if (isSubscriptionChecked.get(mySubscriptions.indexOf(subscription))) {
                 categorySubscriptions.add(subscription);
             }
-        }
-
-        for (Subscription subscription: categorySubscriptions) {
-            Log.d("HELPMEPLS2", subscription.getTitle());
         }
 
         Category newCategory = new Category(title, false);
@@ -178,13 +173,11 @@ public class NewCategory extends AppCompatActivity {
 
         // Return from this intent to pass subscription list and title back to mainactivity
         Bundle bundle = new Bundle();
-//        bundle.("list", (Serializable) categorySubscriptions); // maybe wont work, but we'll see
 
         bundle.putString("title", title);
 
         Intent intent = new Intent();
         intent.putExtras(bundle);
-//        Log.d(TAG,intent.getExtras().toString());
         setResult(RESULT_OK, intent);
         finish();
     }
