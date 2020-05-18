@@ -40,7 +40,7 @@
             android:layout_marginBottom="16dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:srcCompat="@android:drawable/ic_dialog_email" />
+            app:srcCompat="@drawable/new_folder" />
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"

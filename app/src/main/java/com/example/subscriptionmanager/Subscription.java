@@ -4,7 +4,7 @@ import android.graphics.Bitmap;
 
 import java.io.Serializable;
 
-public class Subscription {
+public class Subscription implements Serializable{
     private String title;
     private String imageUrl;
     private Bitmap image;

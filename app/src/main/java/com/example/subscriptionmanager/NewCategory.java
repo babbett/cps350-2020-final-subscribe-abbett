@@ -56,21 +56,19 @@ public class NewCategory extends AppCompatActivity {
         mySubscriptions = myCategories.getMainSubscriptions();
 
         myCategories.getMainSubscriptions();
-//        Log.d("NEW CATEGORY", "onCreate: " + myCategories.getMainSubscriptions().get(2).getTitle());
-        // TEST STUFF
 
 
         // The list that will hold the subscriptions
         listView = findViewById(R.id.list_view);
-//        listView.setChoiceMode(AbsListView.CHOICE_MODE_MULTIPLE);
 
         // The list that will hold the values which denote which items have been selected
         isSubscriptionChecked = new ArrayList<>();
         initializeBoolean();
+
         // Create the adapter for the list
         adapter = new ListAdapter();
         listView.setAdapter(adapter);
-        listView.setOnItemClickListener(messageClickedHandler);
+//        listView.setOnItemClickListener(messageClickedHandler);
 
 
         // Add the search box
@@ -79,17 +77,6 @@ public class NewCategory extends AppCompatActivity {
 
     }
 
-//    private void loadImages() {
-//        ImageView imageView = findViewById(R.id.imageView);
-//        for (com.example.subscriptionmanager.Subscription sub: mySubscriptions.getMySubscriptions()) {
-//            Picasso.get()
-//                    .load(R.drawable.progress_animation)
-//                    .placeholder(R.drawable.progress_animation)
-//                    .into(imageView);
-//        }
-//
-//        Log.d("Load", "loadImages: DONE");
-//    }
 
     private class ListAdapter extends BaseAdapter {
         // override other abstract methods here
@@ -118,7 +105,7 @@ public class NewCategory extends AppCompatActivity {
 
             ImageView imgView = convertView.findViewById(R.id.subscription_thumbnail_view);
             TextView textView = convertView.findViewById(R.id.subscription_title_view);
-            CheckBox checkBox = convertView.findViewById(R.id.check_box);
+            final CheckBox checkBox = convertView.findViewById(R.id.check_box);
 
             Subscription currentSubscription = mySubscriptions.get(position);
             Picasso.get()
@@ -134,48 +121,50 @@ public class NewCategory extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     isSubscriptionChecked.set(the_position, !isSubscriptionChecked.get(the_position));
-                    Log.d("HELPMEPLS", the_position + " modified");
                 }
             });
 
-            checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-//                    isSubscriptionChecked.set(the_position, isChecked);
+                public void onClick(View v) {
+                    checkBox.callOnClick();
+                    checkBox.setChecked(!checkBox.isChecked());
                 }
             });
+
+//            checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+//                @Override
+//                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+////                    isSubscriptionChecked.set(the_position, isChecked);
+//                }
+//            });
 
 
             return convertView;
         }
     }
 
-    private AdapterView.OnItemClickListener messageClickedHandler = new AdapterView.OnItemClickListener() {
-        @Override
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-            // Toggle the checkbox
-            CheckBox checkBox = view.findViewById(R.id.check_box);
-            Boolean currentVal = checkBox.isChecked();
-            checkBox.setChecked(!currentVal);
-
-            Toast.makeText(getApplicationContext(), mySubscriptions.get(position).getTitle(), Toast.LENGTH_SHORT).show();
-        }
-    };
+//    private AdapterView.OnItemClickListener messageClickedHandler = new AdapterView.OnItemClickListener() {
+//        @Override
+//        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//
+//            // Toggle the checkbox
+//            CheckBox checkBox = view.findViewById(R.id.check_box);
+//            Boolean currentVal = checkBox.isChecked();
+//            checkBox.setChecked(!currentVal);
+//
+//            Toast.makeText(getApplicationContext(), mySubscriptions.get(position).getTitle(), Toast.LENGTH_SHORT).show();
+//        }
+//    };
 
     public void onConfirmSelection(View v) {
 
         List<Subscription> categorySubscriptions = new ArrayList<>();
 
         for (Subscription subscription: mySubscriptions) {
-            Log.d("HELPMEPLS", isSubscriptionChecked.get(mySubscriptions.indexOf(subscription))?"true " + subscription.getTitle():"false" + subscription.getTitle());
             if (isSubscriptionChecked.get(mySubscriptions.indexOf(subscription))) {
                 categorySubscriptions.add(subscription);
             }
-        }
-
-        for (Subscription subscription: categorySubscriptions) {
-            Log.d("HELPMEPLS2", subscription.getTitle());
         }
 
         Category newCategory = new Category(title, false);
@@ -184,13 +173,11 @@ public class NewCategory extends AppCompatActivity {
 
         // Return from this intent to pass subscription list and title back to mainactivity
         Bundle bundle = new Bundle();
-//        bundle.("list", (Serializable) categorySubscriptions); // maybe wont work, but we'll see
 
         bundle.putString("title", title);
 
         Intent intent = new Intent();
         intent.putExtras(bundle);
-//        Log.d(TAG,intent.getExtras().toString());
         setResult(RESULT_OK, intent);
         finish();
     }

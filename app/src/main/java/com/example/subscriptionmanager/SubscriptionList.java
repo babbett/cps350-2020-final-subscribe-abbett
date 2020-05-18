@@ -5,12 +5,13 @@ import android.widget.ProgressBar;
 
 import com.google.api.services.youtube.model.SubscriptionListResponse;
 
+import java.io.Serializable;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class SubscriptionList {
+public class SubscriptionList implements Serializable {
     final String TAG = "SubscriptionList";
 
     private static ArrayList<Subscription> mySubscriptions = new ArrayList<Subscription>();
@@ -23,16 +24,24 @@ public class SubscriptionList {
 
         for (com.google.api.services.youtube.model.Subscription sub: subList) {
             String title = sub.getSnippet().getTitle();
-            Log.d(TAG, "addSubscriptionList: " + sub.getSnippet());
             String url = sub.getSnippet().getThumbnails().getDefault().getUrl();
             Subscription newSub = new Subscription(title, url);
             addSubscription(newSub);
-            Log.d(TAG, "addSubscriptionList: added " + title);
         }
     }
 
     public void addSubscription(Subscription subscription) {
+        if(isAlreadyInSubscriptionList(subscription)) { return; }
         mySubscriptions.add(subscription);
+    }
+
+    private boolean isAlreadyInSubscriptionList(Subscription sub) {
+        for (Subscription subscription: mySubscriptions) {
+            if (subscription.getImageUrl().equals(sub.getImageUrl())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public ArrayList<Subscription> getMySubscriptions() {
@@ -63,5 +72,9 @@ public class SubscriptionList {
         }
         Log.d(TAG, "ERROR: " + name + " NOT FOUND");
         return null;
+    }
+
+    public static void setMySubscriptions(ArrayList<Subscription> mySubscriptions) {
+        SubscriptionList.mySubscriptions = mySubscriptions;
     }
 }

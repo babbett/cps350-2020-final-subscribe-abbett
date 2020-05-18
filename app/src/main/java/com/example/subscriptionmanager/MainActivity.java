@@ -3,8 +3,7 @@ package com.example.subscriptionmanager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -20,14 +19,15 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -39,8 +39,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +50,8 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Subscription;
 import com.google.api.services.youtube.model.SubscriptionListResponse;
-import com.squareup.picasso.Picasso;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity"; // For debugging
@@ -71,10 +71,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 beginAddCategory();
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
             }
         });
+
+        // Prepare to load any saved data
+        mPrefs = getPreferences(MODE_PRIVATE);
 
         // Progress bar and loading text will display while loading subscription data
         progressBar = findViewById(R.id.progressBar);
@@ -85,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
         // Category list will be invisible while loading subscription data
         categoryListView = findViewById(R.id.category_list_view);
         categoryListView.setVisibility(View.INVISIBLE);
+        myCategories = new CategoryList();
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
@@ -92,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
             launchAuthenticate();
         } else {
             setGoogleSignInClient();
-
             // Get the list of subscriptions
             // If loading from memory is implemented, should add some sort of check to make sure that
             // progressbar is made visible while loading and invisible when done. Currently only becomes
@@ -100,8 +101,75 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.VISIBLE);
             loadingText.setVisibility(View.VISIBLE);
             mySubscriptions = new SubscriptionList();
+            reloadCategories();
             new getSubscriptionAsync().execute(this);
         }
+    }
+
+    private void reloadCategories() {
+        // Attempts to reload data from memory
+        Gson gson = new Gson();
+
+        // Load categoriesList object
+        String json = mPrefs.getString("myCategoriesObject", "");
+//        CategoryList loadedCategoryList = gson.fromJson(json, CategoryList.class);
+        myCategories = gson.fromJson(json, CategoryList.class);
+
+        json = mPrefs.getString("myCategoriesList", "");
+
+        Type type = new TypeToken<List<Category>>(){}.getType();
+        List<Category> loadedListOfCategories = gson.fromJson(json, type);
+
+        if (loadedListOfCategories == null) {
+            Log.d(TAG, "reloadList: NULL");
+        } else {
+            loaded = true;
+            Log.d(TAG, "reloadList: " + loadedListOfCategories.get(0).getSubscriptions().size());
+        }
+
+        if (myCategories == null) {
+            Log.d(TAG, "reloadCategories: NULL");
+        } else {
+            loaded = true;
+            Log.d(TAG, "reloadCategories: " + myCategories.getMyCategories().get(0).getSubscriptions().size());
+        }
+        Log.d("LOAD",json);
+        myCategories.addCategoryListFromLoad(loadedListOfCategories);
+//        for (Category category: loadedListOfCategories) {
+//            myCategories.addCategoryFromLoad(category);
+//            Log.d("LOAD", "added " + category.getTitle());
+//        }
+    }
+
+    private void saveCategories() {
+        // Save the data to memory
+        Log.d("SAVE", "save called");
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        Gson gson = new Gson();
+
+        // Save CategoriesList object
+        String json = gson.toJson(myCategories);
+        prefsEditor.putString("myCategoriesObject", json);
+
+        // Save List<Categories> object
+        json = gson.toJson(myCategories.getMyCategories());
+        prefsEditor.putString("myCategoriesList", json);
+
+        // Save main subscription list (test)
+        json = gson.toJson(myCategories.getMainSubscriptions());
+        prefsEditor.putString("uncategorizedSubscriptionList", json);
+
+        Log.d("SAVE", gson.toString());
+        prefsEditor.commit();
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d("SAVE", myCategories.getMyCategories().get(0).getTitle() + " to " + myCategories.getMyCategories().get(myCategories.getMyCategories().size()-1).getTitle());
+        saveCategories();
+        super.onStop();
+
+        // Save the data
     }
 
     @Override
@@ -116,20 +184,6 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onResume");
 
     }
-
-
-
-
-    //Will probably need to implement these to fix some login errors
-//    @Override
-//    protected void onStart(Bundle savedInstanceState) {
-//
-//    }
-//
-//    @Override
-//    protected void onResume(Bundle savedInstanceState) {
-//
-//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -149,15 +203,6 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_logout) {
             openLogoutDialogue();
             return true;
-        }
-
-        if (id == R.id.action_rename) {
-            openRenameDialogue();
-            return true;
-        }
-
-        if (id == R.id.action_delete) {
-            openDeleteDialogue()
         }
 
         return super.onOptionsItemSelected(item);
@@ -200,16 +245,18 @@ public class MainActivity extends AppCompatActivity {
 //            getListOfSubscribers(response);
             Log.d(TAG, Integer.toString(response.getItems().size()));
             mySubscriptions.addSubscriptionList(response); // adding to the list of subscription objects
-            Log.d("MainActivity", "nextPageToken: " + nextPageToken);
             while (nextPageToken != "ERROR") {
                 SubscriptionListResponse nextResponse;
                 nextResponse = getNextSubscriptionPage(youTube, nextPageToken);
 //                getListOfSubscribers(nextResponse);
                 Log.d(TAG, Integer.toString(nextResponse.getItems().size()));
-
                 mySubscriptions.addSubscriptionList(nextResponse); // adding to the list of subscription objects
                 nextPageToken = getNextPageToken(nextResponse);
             }
+
+            myCategories.updateCategories(mySubscriptions.getMySubscriptions());
+
+//            myCategories.addListToMainFromApi(mySubscriptions.getMySubscriptions());
             return response;
         }
 
@@ -217,10 +264,7 @@ public class MainActivity extends AppCompatActivity {
             // The result is currently only the first page
 
 //            mySubscriptions.getMySubscriptions();
-            for (com.example.subscriptionmanager.Subscription sub: mySubscriptions.getMySubscriptions()) {
-                Log.d(TAG, "onPostExecute: "+ sub.getTitle());
-            }
-            myCategories = new CategoryList();
+//            myCategories = new CategoryList();
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
             displayCategories();
@@ -306,20 +350,14 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void openRenameDialogue() {
-
-    }
-
-    private void openDeleteDialogue() {
-
-    }
-
     private void revokePermission() {
         // need to get the sign in client
         mGoogleSignInClient.revokeAccess();
         mGoogleSignInClient.signOut();
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         Log.d(TAG, (account == null)?"worked":"didnt work??");
+
+        PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit().clear().apply();
         launchAuthenticate();
     }
 
@@ -349,7 +387,7 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Create new category");
         builder.setMessage("Enter category name:");
-        builder.setCancelable(false);
+        builder.setCancelable(true);
         builder.setView(edtText);
         builder.setNeutralButton("Create", new DialogInterface.OnClickListener() {
             @Override
@@ -381,22 +419,19 @@ public class MainActivity extends AppCompatActivity {
                 Bundle bundle = data.getExtras();
     
                 String categoryName = (String) bundle.getString("title");
+//
+//                String title2 = myCategories.getMyCategories().get(1).getTitle();
+//                for(Category category: myCategories.getMyCategories()) {
+//                    Log.d("PLEASEWORK",category.getTitle());
+//                }
 
-//                List<com.example.subscriptionmanager.Subscription> newSubscriptionList =
-//                        (List<com.example.subscriptionmanager.Subscription>) bundle.get("list");
-                String title2 = myCategories.getMyCategories().get(1).getTitle();
-                for(Category category: myCategories.getMyCategories()) {
-                    Log.d("PLEASEWORK",category.getTitle());
-                }
-
-//                Category newCategory = new Category(categoryName, false);
-//                newCategory.addList(newSubscriptionList);
-//                myCategories.addCategory(newCategory);
 
                 Log.d(TAG, "selection confirmed");
             }
             if (resultCode == RESULT_CANCELED) {
-                Log.d(TAG, "onActivityResult: BAD THING");
+                Log.d(TAG, "onActivityResult: cancelled");
+                Snackbar.make(findViewById(R.id.fab), "Add new category cancelled", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
             }
 
 
@@ -404,6 +439,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void displayCategories() {
+        if (!loaded) {
+            myCategories = new CategoryList();
+        }
         adapter = new CategoryListAdapter();
         categoryListView.setAdapter(adapter);
         categoryListView.setVisibility(View.VISIBLE);
@@ -431,14 +469,16 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public View getView(int position, View convertView, ViewGroup container) {
             if (convertView == null) {
-                convertView = getLayoutInflater().inflate(R.layout.default_list_item, container, false);
+                convertView = getLayoutInflater().inflate(R.layout.category_list_item, container, false);
             }
 
             ImageView imgView = convertView.findViewById(R.id.category_folder_image);
             TextView textView = convertView.findViewById(R.id.category_text);
             TextView numberView = convertView.findViewById(R.id.category_number_text);
+            final ImageButton deleteButton = convertView.findViewById(R.id.category_delete_button);
+            final ImageButton renameButton = convertView.findViewById(R.id.category_rename_button);
 
-            Category currentCategory = myCategories.getMyCategories().get(position);
+            final Category currentCategory = myCategories.getMyCategories().get(position);
             textView.setText(currentCategory.getTitle());
             numberView.setText(Integer.toString(currentCategory.getSubscriptions().size()));
             Log.d("ListView", Integer.toString(myCategories.getMyCategories().size()));
@@ -449,14 +489,113 @@ public class MainActivity extends AppCompatActivity {
                 imgView.setImageResource(R.drawable.folder_image);
             }
 
+            renameButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openRenameDialogue(v);
+                }
+
+                private void openRenameDialogue(View v){
+                    // The following code was copied almost entirely from this useful link:
+                    // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+                    final EditText edtText = new EditText(v.getContext());
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                    builder.setTitle("Rename " + currentCategory.getTitle());
+                    builder.setMessage("Enter new name:");
+                    builder.setCancelable(true);
+                    builder.setView(edtText);
+                    builder.setNeutralButton("Change", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            currentCategory.setTitle(edtText.getText().toString());
+                        }
+                    });
+                    builder.show();
+                }
+            });
+
+            deleteButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openDeleteDialogue(v);
+                }
+
+                private void openDeleteDialogue(View v) {
+                    // The following code was copied almost entirely from this useful link:
+                    // http://www.apnatutorials.com/android/android-alert-confirm-prompt-dialog.php?categoryId=2&subCategoryId=34&myPath=android/android-alert-confirm-prompt-dialog.php
+                    AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                    builder.setTitle("Delete " + currentCategory.getTitle());
+                    builder.setMessage("Are you sure you want to delete this category? This cannot be undone.");
+                    builder.setCancelable(true);
+                    builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Toast.makeText(getApplicationContext(), "Deleted " + currentCategory.getTitle(), Toast.LENGTH_SHORT).show();
+                            myCategories.removeCategory(currentCategory);
+                            deleteButton.setVisibility(View.GONE);
+                            renameButton.setVisibility(View.GONE);
+                            notifyDataSetChanged();
+                        }
+                    });
+
+                    builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Toast.makeText(getApplicationContext(), "Cancelled", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    builder.show();
+                }
+            });
+
+            convertView.setOnLongClickListener(new View.OnLongClickListener() {
+                boolean isLongClicked = false;
+
+                @Override
+                public boolean onLongClick(View v) {
+                    isLongClicked = !isLongClicked;
+                    Log.d(TAG, "onLongClick: longclicked " + currentCategory.getTitle());
+                    editMode(isLongClicked);
+                    return true;
+                }
+
+                private void editMode(boolean isLongClicked) {
+                    // Cant rename main category
+                    if (myCategories.getMyCategories().indexOf(currentCategory) == 0) {return;}
+
+                    if (isLongClicked) {
+                        deleteButton.setVisibility(View.VISIBLE);
+                        renameButton.setVisibility(View.VISIBLE);
+                    } else {
+                        deleteButton.setVisibility(View.GONE);
+                        renameButton.setVisibility(View.GONE);
+                    }
+                }
+
+
+            });
+
+            convertView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int key = myCategories.getMyCategories().indexOf(currentCategory);
+
+                    Intent intent = new Intent(v.getContext(), ViewCategorySubscriptions.class);
+                    intent.putExtra("key", key);
+                    startActivity(intent);
+
+                }
+            });
             return convertView;
         }
 
     }
 
 
-
-
+    Boolean loaded;
+    SharedPreferences mPrefs;
     GoogleSignInClient mGoogleSignInClient;
     SubscriptionList mySubscriptions;
     CategoryList myCategories;

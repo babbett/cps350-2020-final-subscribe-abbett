@@ -11,7 +11,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".NewCategory"></activity>
+        <activity android:name=".ViewCategorySubscriptions"></activity>
+        <activity android:name=".NewCategory" />
         <activity android:name=".Authenticate" />
         <activity
             android:name=".MainActivity"
