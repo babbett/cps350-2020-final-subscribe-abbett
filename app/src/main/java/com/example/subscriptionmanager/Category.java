@@ -1,5 +1,8 @@
 package com.example.subscriptionmanager;
 
+import android.util.Log;
+import android.widget.ProgressBar;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +25,20 @@ public class Category {
     }
 
     public void add(Subscription subscription) {
+        // Make sure we are not adding the same subscription again
+        if (alreadyInSubscriptionList(subscription)) { return; }
         myCategorySubscriptions.add(subscription);
+    }
+
+    private boolean alreadyInSubscriptionList(Subscription subscription) {
+        for (Subscription sub: myCategorySubscriptions) {
+            if (subscription.getImageUrl().equals(sub.getImageUrl())) {
+                Log.d("Category", subscription.getTitle() + " already in " + title);
+                return true;
+            }
+            Log.d("Category", subscription.getTitle() + " not in " + title);
+        }
+        return false;
     }
 
     public void remove(Subscription subscription) {

@@ -38,6 +38,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.0.0'
 
     implementation 'com.squareup.picasso:picasso:2.71828' // For loading images
+    implementation 'com.google.code.gson:gson:2.8.5' // For saving/loading data
 
 
 }

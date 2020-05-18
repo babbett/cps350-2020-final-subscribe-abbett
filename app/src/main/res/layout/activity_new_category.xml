@@ -32,8 +32,8 @@
 
     <Button
         android:id="@+id/confirm_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="250dp"
+        android:layout_height="68dp"
         android:layout_marginBottom="16dp"
         android:onClick="onConfirmSelection"
         android:text="Confirm Selection"

@@ -11,10 +11,10 @@ public class CategoryList implements Serializable {
 
     public CategoryList() {
         // On initialization add category with all subscriptions to the category list
-        if (myCategories == null) {
+        if (myCategories == null || myCategories.get(0).getSubscriptions().size() == 0 ) {
             myCategories = new ArrayList<Category>();
             SubscriptionList subscriptionList = new SubscriptionList();
-            Category main = new Category("All", false);
+            Category main = new Category("Uncategorized", false);
             main.addList(subscriptionList.getMySubscriptions());
             myCategories.add(main);
         }

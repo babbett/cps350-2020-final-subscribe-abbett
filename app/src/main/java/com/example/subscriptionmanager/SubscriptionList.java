@@ -32,7 +32,19 @@ public class SubscriptionList {
     }
 
     public void addSubscription(Subscription subscription) {
+        if(isAlreadyInSubscriptionList(subscription)) { return; }
         mySubscriptions.add(subscription);
+    }
+
+    private boolean isAlreadyInSubscriptionList(Subscription sub) {
+        for (Subscription subscription: mySubscriptions) {
+            if (subscription.getImageUrl().equals(sub.getImageUrl())) {
+                Log.d("SubscriptionList", sub.getTitle() + " already in the mySubscriptions list");
+                return true;
+            }
+        }
+        Log.d("SubscriptionList", sub.getTitle() + " not in the mySubscriptions list");
+        return false;
     }
 
     public ArrayList<Subscription> getMySubscriptions() {
@@ -63,5 +75,9 @@ public class SubscriptionList {
         }
         Log.d(TAG, "ERROR: " + name + " NOT FOUND");
         return null;
+    }
+
+    public static void setMySubscriptions(ArrayList<Subscription> mySubscriptions) {
+        SubscriptionList.mySubscriptions = mySubscriptions;
     }
 }

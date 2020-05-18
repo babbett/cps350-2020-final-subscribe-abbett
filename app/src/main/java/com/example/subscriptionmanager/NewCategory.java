@@ -64,6 +64,7 @@ public class NewCategory extends AppCompatActivity {
         // The list that will hold the values which denote which items have been selected
         isSubscriptionChecked = new ArrayList<>();
         initializeBoolean();
+
         // Create the adapter for the list
         adapter = new ListAdapter();
         listView.setAdapter(adapter);

@@ -3,8 +3,7 @@ package com.example.subscriptionmanager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -25,9 +24,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -41,8 +38,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +48,7 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.Subscription;
 import com.google.api.services.youtube.model.SubscriptionListResponse;
-import com.squareup.picasso.Picasso;
+import com.google.gson.Gson;
 
 public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity"; // For debugging
@@ -78,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Prepare to load any saved data
+        mPrefs = getPreferences(MODE_PRIVATE);
+
         // Progress bar and loading text will display while loading subscription data
         progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
@@ -87,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         // Category list will be invisible while loading subscription data
         categoryListView = findViewById(R.id.category_list_view);
         categoryListView.setVisibility(View.INVISIBLE);
+        myCategories = new CategoryList();
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
@@ -94,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
             launchAuthenticate();
         } else {
             setGoogleSignInClient();
-
             // Get the list of subscriptions
             // If loading from memory is implemented, should add some sort of check to make sure that
             // progressbar is made visible while loading and invisible when done. Currently only becomes
@@ -102,8 +100,38 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.VISIBLE);
             loadingText.setVisibility(View.VISIBLE);
             mySubscriptions = new SubscriptionList();
+            reloadCategories();
             new getSubscriptionAsync().execute(this);
         }
+    }
+
+    private void reloadCategories() {
+        // Attempts to reload categorylist data from memory
+        Gson gson = new Gson();
+        String json = mPrefs.getString("myCategories", "");
+        myCategories = gson.fromJson(json, CategoryList.class);
+
+        Log.d("LOAD",json);
+    }
+
+    private void saveCategories() {
+        // Save the categorylist data
+        Log.d("SAVE", "save called");
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        Gson gson = new Gson();
+        String json = gson.toJson(myCategories);
+        prefsEditor.putString("myCategories", json);
+        Log.d("SAVE",json);
+        prefsEditor.commit();
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d("SAVE", myCategories.getMyCategories().get(0).getTitle() + " to " + myCategories.getMyCategories().get(myCategories.getMyCategories().size()-1).getTitle());
+        saveCategories();
+        super.onStop();
+
+        // Save the data
     }
 
     @Override
@@ -118,20 +146,6 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onResume");
 
     }
-
-
-
-
-    //Will probably need to implement these to fix some login errors
-//    @Override
-//    protected void onStart(Bundle savedInstanceState) {
-//
-//    }
-//
-//    @Override
-//    protected void onResume(Bundle savedInstanceState) {
-//
-//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -151,15 +165,6 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_logout) {
             openLogoutDialogue();
             return true;
-        }
-
-        if (id == R.id.action_rename) {
-            openRenameDialogue();
-            return true;
-        }
-
-        if (id == R.id.action_delete) {
-            deleteButtonPressed();
         }
 
         return super.onOptionsItemSelected(item);
@@ -222,6 +227,7 @@ public class MainActivity extends AppCompatActivity {
             for (com.example.subscriptionmanager.Subscription sub: mySubscriptions.getMySubscriptions()) {
                 Log.d(TAG, "onPostExecute: "+ sub.getTitle());
             }
+//            myCategories = new CategoryList();
             myCategories = new CategoryList();
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
@@ -308,14 +314,6 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void openRenameDialogue() {
-
-    }
-
-    private void deleteButtonPressed() {
-
-    }
-
     private void revokePermission() {
         // need to get the sign in client
         mGoogleSignInClient.revokeAccess();
@@ -383,22 +381,19 @@ public class MainActivity extends AppCompatActivity {
                 Bundle bundle = data.getExtras();
     
                 String categoryName = (String) bundle.getString("title");
+//
+//                String title2 = myCategories.getMyCategories().get(1).getTitle();
+//                for(Category category: myCategories.getMyCategories()) {
+//                    Log.d("PLEASEWORK",category.getTitle());
+//                }
 
-//                List<com.example.subscriptionmanager.Subscription> newSubscriptionList =
-//                        (List<com.example.subscriptionmanager.Subscription>) bundle.get("list");
-                String title2 = myCategories.getMyCategories().get(1).getTitle();
-                for(Category category: myCategories.getMyCategories()) {
-                    Log.d("PLEASEWORK",category.getTitle());
-                }
-
-//                Category newCategory = new Category(categoryName, false);
-//                newCategory.addList(newSubscriptionList);
-//                myCategories.addCategory(newCategory);
 
                 Log.d(TAG, "selection confirmed");
             }
             if (resultCode == RESULT_CANCELED) {
-                Log.d(TAG, "onActivityResult: BAD THING");
+                Log.d(TAG, "onActivityResult: cancelled");
+                Snackbar.make(findViewById(R.id.fab), "Add new category cancelled", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
             }
 
 
@@ -433,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public View getView(int position, View convertView, ViewGroup container) {
             if (convertView == null) {
-                convertView = getLayoutInflater().inflate(R.layout.default_list_item, container, false);
+                convertView = getLayoutInflater().inflate(R.layout.category_list_item, container, false);
             }
 
             ImageView imgView = convertView.findViewById(R.id.category_folder_image);
@@ -473,7 +468,6 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             currentCategory.setTitle(edtText.getText().toString());
-//                            onResume();
                         }
                     });
                     builder.show();
@@ -499,7 +493,6 @@ public class MainActivity extends AppCompatActivity {
                             Toast.makeText(getApplicationContext(), "Deleted " + currentCategory.getTitle(), Toast.LENGTH_SHORT).show();
                             myCategories.removeCategory(currentCategory);
                             notifyDataSetChanged();
-//                            onResume();
                         }
                     });
 
@@ -527,7 +520,7 @@ public class MainActivity extends AppCompatActivity {
 
                 private void editMode(boolean isLongClicked) {
                     // Cant rename main category
-                    if (currentCategory.getTitle().equals("All")) {return;}
+                    if (currentCategory.getTitle().equals("Uncategorized")) {return;}
 
                     if (isLongClicked) {
                         deleteButton.setVisibility(View.VISIBLE);
@@ -541,6 +534,17 @@ public class MainActivity extends AppCompatActivity {
 
             });
 
+            convertView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int key = myCategories.getMyCategories().indexOf(currentCategory);
+
+                    Intent intent = new Intent(v.getContext(), ViewCategorySubscriptions.class);
+                    intent.putExtra("key", key);
+                    startActivity(intent);
+
+                }
+            });
             return convertView;
         }
 
@@ -548,7 +552,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
+    SharedPreferences mPrefs;
     GoogleSignInClient mGoogleSignInClient;
     SubscriptionList mySubscriptions;
     CategoryList myCategories;
