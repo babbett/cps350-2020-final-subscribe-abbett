@@ -89,11 +89,8 @@ public class MainActivity extends AppCompatActivity {
         myCategories = new CategoryList();
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-        if (account == null || account.isExpired()) {
+        if (account == null ) {
             // Launch sign-in activity
-            if (account != null ) {
-                Log.d(TAG, "onCreate: check another bug " + account.isExpired());
-            }
             launchAuthenticate();
         } else {
             Log.d("LOGIN ISSUE", "CHeck scopes? " + account.isExpired());
@@ -124,23 +121,13 @@ public class MainActivity extends AppCompatActivity {
         Type type = new TypeToken<List<Category>>(){}.getType();
         List<Category> loadedListOfCategories = gson.fromJson(json, type);
 
-        if (loadedListOfCategories == null) {
-            Log.d(TAG, "reloadList: NULL");
+        if (loadedListOfCategories == null || myCategories == null) {
+            // Starting fresh, nothing loaded
             loaded = false;
             return;
-        } else {
-            loaded = true;
-            Log.d(TAG, "reloadList: " + loadedListOfCategories.get(0).getSubscriptions().size());
         }
 
-        if (myCategories == null) {
-            loaded = false;
-            Log.d(TAG, "reloadCategories: NULL");
-            return;
-        } else {
-            loaded = true;
-            Log.d(TAG, "reloadCategories: " + myCategories.getMyCategories().get(0).getSubscriptions().size());
-        }
+        loaded = true;
         Log.d("LOAD",json);
         myCategories.addCategoryListFromLoad(loadedListOfCategories);
     }
@@ -154,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
         // Save CategoriesList object
         String json = gson.toJson(myCategories);
         prefsEditor.putString("myCategoriesObject", json);
+
         // Save List<Categories> object
         // If myCategories is null, we are saving after logging out, so wipe the save by saving null
         if (myCategories == null) {
