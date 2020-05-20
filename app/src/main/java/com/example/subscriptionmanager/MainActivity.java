@@ -103,13 +103,18 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.VISIBLE);
             loadingText.setVisibility(View.VISIBLE);
             mySubscriptions = new SubscriptionList();
+
+            // Load saved data
             reloadCategories();
+
             new getSubscriptionAsync().execute(this);
         }
     }
 
     private void reloadCategories() {
         // Attempts to reload data from memory
+
+        // Gson allows us to convert the json back to objects that the app can use
         Gson gson = new Gson();
 
         // Load categoriesList object
@@ -123,6 +128,8 @@ public class MainActivity extends AppCompatActivity {
 
         if (loadedListOfCategories == null || myCategories == null) {
             // Starting fresh, nothing loaded
+            myCategories = new CategoryList();
+            myCategories.addCategoryListFromLoad(null);
             loaded = false;
             return;
         }
@@ -173,7 +180,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume(){
         super.onResume();
         Log.d(TAG, "onResume");
-
     }
 
     @Override
@@ -232,10 +238,10 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
-            if (!loaded) {
-                myCategories = new CategoryList();
-                myCategories.addCategoryListFromLoad(null);
-            }
+//            if (!loaded) {
+//                myCategories = new CategoryList();
+//                myCategories.addCategoryListFromLoad(null);
+//            }
 
             nextPageToken = getNextPageToken(response);
             Log.d(TAG, Integer.toString(response.getItems().size()));
@@ -337,12 +343,16 @@ public class MainActivity extends AppCompatActivity {
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         Log.d(TAG, (account == null)?"worked":"didnt work??");
 
+        /************************************/
+        // These dont seem to be working, so the workaround is to set myCategories to null
         SharedPreferences.Editor prefsEditor = mPrefs.edit();
         prefsEditor.clear();
         prefsEditor.remove("myCategoriesObject");
         prefsEditor.remove("myCategoriesList");
         boolean result = prefsEditor.commit();
         Log.d(TAG, "revokePermission: RESULT OF PREFS EDITOR " + result);
+        /***********************************/
+
         myCategories = null;
         launchAuthenticate();
     }
