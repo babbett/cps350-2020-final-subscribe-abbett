@@ -57,12 +57,12 @@ public class MainActivity extends AppCompatActivity {
     final String TAG = "MainActivity"; // For debugging
     AsyncTask<Context, Void, SubscriptionListResponse> getSubscriptionsAsync;
     final int REQUEST_CODE = 9002; // The request code used for creating new categories
+    final int AUTHENTICATION_CODE = 9003;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        setContentView(R.layout.fragment_collections);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -89,10 +89,15 @@ public class MainActivity extends AppCompatActivity {
         myCategories = new CategoryList();
 
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-        if (account == null) {
+        if (account == null || account.isExpired()) {
             // Launch sign-in activity
+            if (account != null ) {
+                Log.d(TAG, "onCreate: check another bug " + account.isExpired());
+            }
             launchAuthenticate();
         } else {
+            Log.d("LOGIN ISSUE", "CHeck scopes? " + account.isExpired());
+
             setGoogleSignInClient();
             // Get the list of subscriptions
             // If loading from memory is implemented, should add some sort of check to make sure that
@@ -112,7 +117,6 @@ public class MainActivity extends AppCompatActivity {
 
         // Load categoriesList object
         String json = mPrefs.getString("myCategoriesObject", "");
-//        CategoryList loadedCategoryList = gson.fromJson(json, CategoryList.class);
         myCategories = gson.fromJson(json, CategoryList.class);
 
         json = mPrefs.getString("myCategoriesList", "");
@@ -122,23 +126,23 @@ public class MainActivity extends AppCompatActivity {
 
         if (loadedListOfCategories == null) {
             Log.d(TAG, "reloadList: NULL");
+            loaded = false;
+            return;
         } else {
             loaded = true;
             Log.d(TAG, "reloadList: " + loadedListOfCategories.get(0).getSubscriptions().size());
         }
 
         if (myCategories == null) {
+            loaded = false;
             Log.d(TAG, "reloadCategories: NULL");
+            return;
         } else {
             loaded = true;
             Log.d(TAG, "reloadCategories: " + myCategories.getMyCategories().get(0).getSubscriptions().size());
         }
         Log.d("LOAD",json);
         myCategories.addCategoryListFromLoad(loadedListOfCategories);
-//        for (Category category: loadedListOfCategories) {
-//            myCategories.addCategoryFromLoad(category);
-//            Log.d("LOAD", "added " + category.getTitle());
-//        }
     }
 
     private void saveCategories() {
@@ -150,14 +154,15 @@ public class MainActivity extends AppCompatActivity {
         // Save CategoriesList object
         String json = gson.toJson(myCategories);
         prefsEditor.putString("myCategoriesObject", json);
-
         // Save List<Categories> object
-        json = gson.toJson(myCategories.getMyCategories());
+        // If myCategories is null, we are saving after logging out, so wipe the save by saving null
+        if (myCategories == null) {
+            Log.d(TAG, "saveCategories: Saving null value into list");
+            json = gson.toJson(null);
+        } else {
+            json = gson.toJson(myCategories.getMyCategories());
+        }
         prefsEditor.putString("myCategoriesList", json);
-
-        // Save main subscription list (test)
-        json = gson.toJson(myCategories.getMainSubscriptions());
-        prefsEditor.putString("uncategorizedSubscriptionList", json);
 
         Log.d("SAVE", gson.toString());
         prefsEditor.commit();
@@ -165,11 +170,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
-        Log.d("SAVE", myCategories.getMyCategories().get(0).getTitle() + " to " + myCategories.getMyCategories().get(myCategories.getMyCategories().size()-1).getTitle());
+        Log.d(TAG, "onStop: SAVE");
         saveCategories();
         super.onStop();
-
-        // Save the data
     }
 
     @Override
@@ -241,30 +244,28 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
 
+            if (!loaded) {
+                myCategories = new CategoryList();
+                myCategories.addCategoryListFromLoad(null);
+            }
+
             nextPageToken = getNextPageToken(response);
-//            getListOfSubscribers(response);
             Log.d(TAG, Integer.toString(response.getItems().size()));
             mySubscriptions.addSubscriptionList(response); // adding to the list of subscription objects
             while (nextPageToken != "ERROR") {
                 SubscriptionListResponse nextResponse;
                 nextResponse = getNextSubscriptionPage(youTube, nextPageToken);
-//                getListOfSubscribers(nextResponse);
                 Log.d(TAG, Integer.toString(nextResponse.getItems().size()));
                 mySubscriptions.addSubscriptionList(nextResponse); // adding to the list of subscription objects
                 nextPageToken = getNextPageToken(nextResponse);
             }
-
             myCategories.updateCategories(mySubscriptions.getMySubscriptions());
-
-//            myCategories.addListToMainFromApi(mySubscriptions.getMySubscriptions());
             return response;
         }
 
         protected void onPostExecute(SubscriptionListResponse result) {
             // The result is currently only the first page
 
-//            mySubscriptions.getMySubscriptions();
-//            myCategories = new CategoryList();
             progressBar.setVisibility(View.INVISIBLE);
             loadingText.setVisibility(View.INVISIBLE);
             displayCategories();
@@ -309,20 +310,11 @@ public class MainActivity extends AppCompatActivity {
             int index = 0;
             for (Subscription item : items) {
                 subscriberList.add(item.getSnippet().getTitle());
-//                try {
-//                    thumbnailUrl = item.getSnippet().getThumbnails().getDefault().getUrl();
-////                    Log.d("THUMBNAIL", item.getSnippet().getThumbnails().getDefault().getUrl());
-////                    globalState.addSubscription(item.getSnippet().getTitle(), thumbnailUrl);
-//                } catch (JSONException e) {
-//                    e.printStackTrace();
-//                }
                 Log.d("MainActivity", "getListOfSubscribers: " + subscriberList.get(index));
                 index++;
             }
             return subscriberList;
         }
-
-//        protected JSONArray generateSubscriberJSON(String name, String)
     }
 
     private void openLogoutDialogue() {
@@ -357,7 +349,13 @@ public class MainActivity extends AppCompatActivity {
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         Log.d(TAG, (account == null)?"worked":"didnt work??");
 
-        PreferenceManager.getDefaultSharedPreferences(getBaseContext()).edit().clear().apply();
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        prefsEditor.clear();
+        prefsEditor.remove("myCategoriesObject");
+        prefsEditor.remove("myCategoriesList");
+        boolean result = prefsEditor.commit();
+        Log.d(TAG, "revokePermission: RESULT OF PREFS EDITOR " + result);
+        myCategories = null;
         launchAuthenticate();
     }
 
@@ -376,7 +374,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void launchAuthenticate() {
         Intent intent = new Intent(this, Authenticate.class);
-        startActivity(intent);
+        startActivityForResult(intent, AUTHENTICATION_CODE);
     }
 
     private void beginAddCategory() {
@@ -419,13 +417,6 @@ public class MainActivity extends AppCompatActivity {
                 Bundle bundle = data.getExtras();
     
                 String categoryName = (String) bundle.getString("title");
-//
-//                String title2 = myCategories.getMyCategories().get(1).getTitle();
-//                for(Category category: myCategories.getMyCategories()) {
-//                    Log.d("PLEASEWORK",category.getTitle());
-//                }
-
-
                 Log.d(TAG, "selection confirmed");
             }
             if (resultCode == RESULT_CANCELED) {
@@ -433,8 +424,13 @@ public class MainActivity extends AppCompatActivity {
                 Snackbar.make(findViewById(R.id.fab), "Add new category cancelled", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
             }
-
-
+        } else if (requestCode == AUTHENTICATION_CODE) {
+            if (resultCode == RESULT_OK) {
+                Bundle tempBundle = new Bundle();
+                onCreate(tempBundle);
+            } else {
+                Log.d(TAG, "onActivityResult: OH NO");
+            }
         }
     }
 
@@ -445,12 +441,9 @@ public class MainActivity extends AppCompatActivity {
         adapter = new CategoryListAdapter();
         categoryListView.setAdapter(adapter);
         categoryListView.setVisibility(View.VISIBLE);
-//        listView.setOnItemClickListener(messageClickedHandler);
     }
 
     private class CategoryListAdapter extends BaseAdapter {
-        // override other abstract methods here
-
         @Override
         public int getCount() {
             return myCategories.getMyCategories().size();

@@ -34,10 +34,10 @@ public class Category implements Serializable {
     private boolean alreadyInSubscriptionList(Subscription subscription) {
         for (Subscription sub: myCategorySubscriptions) {
             if (subscription.getImageUrl().equals(sub.getImageUrl())) {
-                Log.d("Category", subscription.getTitle() + " already in " + title);
+//                Log.d("Category", subscription.getTitle() + " already in " + title);
                 return true;
             }
-            Log.d("Category", subscription.getTitle() + " not in " + title);
+//            Log.d("Category", subscription.getTitle() + " not in " + title);
         }
         return false;
     }

@@ -27,6 +27,17 @@ public class CategoryList implements Serializable {
 
     public void addCategoryListFromLoad(List<Category> categoryList) {
         // can remove the 1 default category, because we are loading new ones
+        if (categoryList == null) {
+            Log.d("CategoryList", "addCategoryFromLoad: Resetting categorylist");
+            myCategories = new ArrayList<Category>();
+            Category main = new Category("Uncategorized", false);
+            SubscriptionList subscriptionList = new SubscriptionList();
+            subscriptionList.addSubscriptionList(null);
+            main.addList(subscriptionList.getMySubscriptions());
+            myCategories.add(main);
+            return;
+        }
+
         myCategories.remove(0);
         for (Category category: categoryList) {
             addCategoryFromLoad(category);
@@ -53,7 +64,7 @@ public class CategoryList implements Serializable {
 
         // Check for removals
         // Had to do it this non-foreach way because foreach uses iterators, and Java didn't like that
-        // i was modifying what was being iterated on
+        // i was modifying what was being iterated on, which is fair
         for (int ii = 0; ii < myCategories.size(); ii++) {
             Category category = myCategories.get(ii);
             List<Subscription> currSubs = category.getSubscriptions();
@@ -72,7 +83,7 @@ public class CategoryList implements Serializable {
         for (Subscription subscription: subscriptionsFromAPI) {
             if (!allSubscription.contains(subscription.getImageUrl())) {
                 addToMain(subscription);
-                Log.d("CategoryList", "Adding new subscription " + subscription.getTitle());
+//                Log.d("CategoryList", "Adding new subscription " + subscription.getTitle());
             }
         }
     }

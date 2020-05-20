@@ -20,6 +20,12 @@ public class SubscriptionList implements Serializable {
     }
 
     public void addSubscriptionList(SubscriptionListResponse subscriptionListResponse) {
+        if (subscriptionListResponse == null) {
+            // reset the list
+            mySubscriptions = new ArrayList<>();
+            Log.d(TAG, "addSubscriptionList: reset the list");
+            return;
+        }
         List<com.google.api.services.youtube.model.Subscription> subList = subscriptionListResponse.getItems();
 
         for (com.google.api.services.youtube.model.Subscription sub: subList) {
