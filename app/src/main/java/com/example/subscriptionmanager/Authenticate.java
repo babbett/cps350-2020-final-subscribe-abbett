@@ -76,8 +76,18 @@ public class Authenticate extends AppCompatActivity {
     private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
         try {
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
+            Intent intent = new Intent(this, MainActivity.class);
+            startActivity(intent);
+
+            // Setting the result and returning results in a crash
+            // I have tried to fix it, but am not sure what the problem actually is. I don't really
+            // need the result from this activity, I just want to be able to direct Android to call
+            // OnStart to refresh the app after this activity finishes. I may pull some of the code
+            // out of the OnStart activity into an OnStart helper function, which I could call instead
+            // to potentially fix the bug.
+//            setResult(RESULT_OK, intent);
             finish();
-            return;
+//            return;
             // Signed in successfully, return to the main activity.
         } catch (ApiException e) {
             // The ApiException status code indicates the detailed failure reason.

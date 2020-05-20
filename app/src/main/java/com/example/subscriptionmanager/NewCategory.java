@@ -50,8 +50,6 @@ public class NewCategory extends AppCompatActivity {
         // Set the title
         setTitle("Add channels to '" + title + "'");
 
-
-//        mySubscriptions = new SubscriptionList();
         myCategories = new CategoryList();
         mySubscriptions = myCategories.getMainSubscriptions();
 
@@ -68,8 +66,6 @@ public class NewCategory extends AppCompatActivity {
         // Create the adapter for the list
         adapter = new ListAdapter();
         listView.setAdapter(adapter);
-//        listView.setOnItemClickListener(messageClickedHandler);
-
 
         // Add the search box
         // CURRENTLY SET TO INVISIBLE UNTIL I GET IT WORKING
@@ -131,31 +127,9 @@ public class NewCategory extends AppCompatActivity {
                     checkBox.setChecked(!checkBox.isChecked());
                 }
             });
-
-//            checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-//                @Override
-//                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-////                    isSubscriptionChecked.set(the_position, isChecked);
-//                }
-//            });
-
-
             return convertView;
         }
     }
-
-//    private AdapterView.OnItemClickListener messageClickedHandler = new AdapterView.OnItemClickListener() {
-//        @Override
-//        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//
-//            // Toggle the checkbox
-//            CheckBox checkBox = view.findViewById(R.id.check_box);
-//            Boolean currentVal = checkBox.isChecked();
-//            checkBox.setChecked(!currentVal);
-//
-//            Toast.makeText(getApplicationContext(), mySubscriptions.get(position).getTitle(), Toast.LENGTH_SHORT).show();
-//        }
-//    };
 
     public void onConfirmSelection(View v) {
 
